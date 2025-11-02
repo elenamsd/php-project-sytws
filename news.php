@@ -2,54 +2,34 @@
 session_start();
 require_once __DIR__ . '/lib/db.php';
 
+function paginate(int $total, int $perPage, int $page, int $window = 2): array {
+	$perPage = max(1, $perPage);
+	$pages = max(1, (int)ceil($total / $perPage));
+	$page = max(1, min($page, $pages));
+	$offset = ($page - 1) * $perPage;
+	$start = max(1, $page - $window);
+	$end = min($pages, $page + $window);
+	return [
+		'total' => $total,
+		'perPage' => $perPage,
+		'pages' => $pages,
+		'page' => $page,
+		'offset' => $offset,
+		'window_start' => $start,
+		'window_end' => $end
+	];
+}
+
 if (empty($_SESSION['user'])) {
 	header('Location: index.php');
 	exit;
 }
 
-$perPage = 25;
-$page = max(1, (int)($_GET['page'] ?? 1));
-$offset = ($page - 1) * $perPage;
 $search = trim($_GET['s'] ?? '');
-
-$where = '';
-$params = [];
-$types = '';
-
-if ($search !== '') {
-	$where = 'WHERE titulo LIKE ?';
-	$params[] = '%' . $search . '%';
-	$types .= 's';
-}
-
-
-$sqlCount = "SELECT COUNT(*) FROM noticias $where";
-$stmt = $mysqli->prepare($sqlCount);
-if ($types) $stmt->bind_param($types, ...$params);
-$stmt->execute();
-$stmt->bind_result($total);
-$stmt->fetch();
-$stmt->close();
-
-$pages = $total ? (int)ceil($total / $perPage) : 1;
-if ($page > $pages) { $page = $pages; $offset = ($page - 1) * $perPage; }
-
-
-$sql = "SELECT id, titulo, url, fecha FROM noticias $where ORDER BY fecha DESC LIMIT ? OFFSET ?";
-$stmt = $mysqli->prepare($types ? "$sql" : $sql);
-if ($types) {
-	$paramsWithLimits = $params;
-	$typesWithLimits = $types . 'ii';
-	$paramsWithLimits[] = $perPage;
-	$paramsWithLimits[] = $offset;
-	$stmt->bind_param($typesWithLimits, ...$paramsWithLimits);
-} else {
-	$stmt->bind_param('ii', $perPage, $offset);
-}
-$stmt->execute();
-$result = $stmt->get_result();
-$rows = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$pageInput = (int)($_GET['page'] ?? 1);
+$total = get_news_count($search);
+$pagination = paginate($total, 25, $pageInput);
+$rows = get_news($pagination['perPage'], $pagination['offset'], $search);
 ?>
 <!doctype html>
 <html lang="es">
@@ -87,14 +67,13 @@ $stmt->close();
 	</form>
 
 	<p class="text-muted small mb-2">
-		Total: <?= (int)$total ?> | Página <?= (int)$page ?> de <?= (int)$pages ?>
+		Total: <?= (int)$pagination['total'] ?> | Página <?= (int)$pagination['page'] ?> de <?= (int)$pagination['pages'] ?>
 	</p>
 
 	<div class="table-responsive">
 		<table class="table table-striped table-sm align-middle">
 			<thead class="table-dark">
 			<tr>
-				<th>ID</th>
 				<th>Título</th>
 				<th>Fecha</th>
 				<th>Enlace</th>
@@ -103,7 +82,6 @@ $stmt->close();
 			<tbody>
 			<?php foreach ($rows as $r): ?>
 				<tr>
-					<td><?= (int)$r['id'] ?></td>
 					<td class="text-truncate" style="max-width: 420px;">
 						<?= htmlspecialchars($r['titulo']) ?>
 					</td>
@@ -124,19 +102,16 @@ $stmt->close();
 
 	<nav aria-label="Paginación">
 		<ul class="pagination pagination-sm">
-			<li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$page-1]) ?>">«</a>
+			<li class="page-item <?= $pagination['page'] <= 1 ? 'disabled' : '' ?>">
+				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$pagination['page']-1]) ?>">«</a>
 			</li>
-			<?php
-			$start = max(1, $page - 2);
-			$end = min($pages, $page + 2);
-			for ($i = $start; $i <= $end; $i++): ?>
-				<li class="page-item <?= $i === $page ? 'active' : '' ?>">
+			<?php for ($i = $pagination['window_start']; $i <= $pagination['window_end']; $i++): ?>
+				<li class="page-item <?= $i === $pagination['page'] ? 'active' : '' ?>">
 					<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$i]) ?>"><?= $i ?></a>
 				</li>
 			<?php endfor; ?>
-			<li class="page-item <?= $page >= $pages ? 'disabled' : '' ?>">
-				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$page+1]) ?>">»</a>
+			<li class="page-item <?= $pagination['page'] >= $pagination['pages'] ? 'disabled' : '' ?>">
+				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$pagination['page']+1]) ?>">»</a>
 			</li>
 		</ul>
 	</nav>
