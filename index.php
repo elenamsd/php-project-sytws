@@ -1,11 +1,7 @@
 <?php
 session_start();
 @
-require_once __DIR__ . '/lib/auth.php';
-
-$users = [
-	'user@example.com' => password_hash('Password1!', PASSWORD_DEFAULT)
-];
+require_once __DIR__ . '/lib/db.php';
 
 $errors = [];
 $success = '';
@@ -25,19 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$errors[] = 'Correo electrónico no válido.';
 	}
 
-	if (!isValidPassword($password)) {
-		$errors[] = 'La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un signo de puntuación.';
-	}
-
 	if (empty($errors)) {
-		if (isset($users[$email]) && password_verify($password, $users[$email])) {
-			$_SESSION['user'] = $email;
-			$success = 'Inicio de sesión exitoso.';
+		$user = get_user_by($email);
+		if ($user) {
+			if (hash('sha256', $password) === $user['password']) {
+				$_SESSION['user'] = $email;
+				$success = 'Inicio de sesión exitoso.';
+			} else {
+				$errors[] = 'Correo o contraseña incorrectos.';
+			}
 		} else {
-			$errors[] = 'Correo o contraseña incorrectos.';
+			$errors[] = 'No se encontró usuario con ese correo.';
 		}
 	}
 }
+
 ?>
 <!doctype html>
 <html lang="es">
@@ -45,69 +43,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	<meta charset="utf-8">
 	<title>Login</title>
 	<meta name="viewport" content="width=device-width,initial-scale=1">
-	<style>
-		body { font-family: Arial, sans-serif; max-width:600px; margin:2rem auto; padding:1rem; }
-		.form { border:1px solid #ddd; padding:1rem; border-radius:6px; }
-		.input { display:block; width:100%; padding:0.5rem; margin-bottom:0.75rem; }
-		.btn { padding:0.5rem 1rem; }
-		.error { color:#a00; }
-		.success { color:#080; }
-	</style>
+	<link rel="stylesheet" href="index.css"><!-- sigue cargándose por si se añaden overrides -->
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </head>
 <body>
-	<h1>Iniciar sesión</h1>
+	<div class="container py-4">
+		<h1 class="mb-4">Iniciar sesión</h1>
 
-	<?php if (!empty($errors)): ?>
-		<div class="error">
-			<ul>
-				<?php foreach ($errors as $e): ?>
-					<li><?php echo htmlspecialchars($e); ?></li>
-				<?php endforeach; ?>
-			</ul>
-		</div>
-	<?php endif; ?>
+		<?php if (!empty($errors)): ?>
+			<div class="alert alert-danger" role="alert">
+				<ul class="m-0 ps-3">
+					<?php foreach ($errors as $e): ?>
+						<li><?php echo htmlspecialchars($e); ?></li>
+					<?php endforeach; ?>
+				</ul>
+			</div>
+		<?php endif; ?>
 
-	<?php if ($success): ?>
-		<div class="success"><?php echo htmlspecialchars($success); ?></div>
-	<?php endif; ?>
+		<?php if ($success): ?>
+			<div class="alert alert-success" role="alert">
+				<?php echo htmlspecialchars($success); ?>
+			</div>
+		<?php endif; ?>
 
-	<?php if (!empty($_SESSION['user'])): ?>
-		<p>Conectado como: <?php echo htmlspecialchars($_SESSION['user']); ?></p>
-		<p><a href="index.php?logout=1">Cerrar sesión</a></p>
-	<?php else: ?>
-		<form class="form" method="post" id="loginForm" novalidate>
-			<label for="email">Correo electrónico</label>
-			<input class="input" id="email" name="email" type="email" required>
-
-			<label for="password">Contraseña</label>
-			<input class="input" id="password" name="password" type="password" required
-				pattern="(?=^.{8,}$)(?=.*[A-Z])(?=.*\d)(?=.*\W).*">
-
-			<small>La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un signo de puntuación.</small>
-			<br><br>
-			<button class="btn" type="submit">Entrar</button>
-		</form>
-
-		<script>
-		(function(){
-			const form = document.getElementById('loginForm');
-			const password = document.getElementById('password');
-
-			function validPassword(p) {
-				return /^(?=.{8,}$)(?=.*[A-Z])(?=.*\d)(?=.*\W).*/.test(p);
-			}
-
-			form.addEventListener('submit', function(e){
-				const pw = password.value || '';
-				if (!validPassword(pw)) {
-					e.preventDefault();
-					alert('La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un signo de puntuación.');
-					password.focus();
-				}
-			});
-		})();
-		</script>
-		<p style="margin-top:1rem;"><strong>Usuario de prueba:</strong> user@example.com — Contraseña: Password1!</p>
-	<?php endif; ?>
+		<?php if (!empty($_SESSION['user'])): ?>
+			<div class="card p-3 mb-3">
+				<p class="mb-2">Conectado como: <strong><?php echo htmlspecialchars($_SESSION['user']); ?></strong></p>
+				<a class="btn btn-outline-secondary btn-sm" href="index.php?logout=1">Cerrar sesión</a>
+			</div>
+		<?php else: ?>
+			<form class="card p-4 shadow-sm" method="post" id="loginForm" novalidate>
+				<div class="mb-3">
+					<label for="email" class="form-label">Correo electrónico</label>
+					<input class="form-control" id="email" name="email" type="email" required>
+				</div>
+				<div class="mb-3">
+					<label for="password" class="form-label">Contraseña</label>
+					<input class="form-control" id="password" name="password" type="password" required>
+				</div>
+				<button class="btn btn-primary w-100" type="submit">Entrar</button>
+			</form>
+		<?php endif; ?>
+	</div>
 </body>
 </html>
