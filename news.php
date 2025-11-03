@@ -28,6 +28,7 @@ if (empty($_SESSION['user'])) {
 $search = trim($_GET['s'] ?? '');
 $areaId = (int)($_GET['area'] ?? 0);
 $pageInput = (int)($_GET['page'] ?? 1);
+$updated = (int)($_GET['updated'] ?? 0);
 $created = (int)($_GET['created'] ?? 0);
 
 $areas = get_areas();
@@ -86,6 +87,12 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
 		</div>
 	<?php endif; ?>
+	<?php if ($updated): ?>
+		<div class="alert alert-success alert-dismissible fade show py-2 mb-3">
+			Noticia actualizada correctamente.
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+		</div>
+	<?php endif; ?>
 
 
 	<p class="text-muted small mb-2">
@@ -113,6 +120,7 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 							<?php if (!empty($r['url'])): ?>
 								<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="<?= htmlspecialchars($r['url']) ?>">Abrir</a>
 							<?php endif; ?>
+							<a class="btn btn-outline-secondary" href="news_edit.php?id=<?= (int)$r['id'] ?>">Editar</a>
 						</div>
 					</td>
 				</tr>

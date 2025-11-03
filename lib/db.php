@@ -90,10 +90,33 @@ function get_news(int $limit, int $offset, string $search = '', int $areaId = 0)
     return $rows;
 }
 
+function get_news_by_id(int $id): ?array {
+    global $mysqli;
+    $stmt = $mysqli->prepare('SELECT n.id, n.titulo, n.url, n.fecha, n.idarea, a.area 
+                              FROM noticias n LEFT JOIN areas a ON a.id = n.idarea
+                              WHERE n.id = ? LIMIT 1');
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res->fetch_assoc() ?: null;
+    $stmt->close();
+    return $row;
+}
+
+
 function create_news(string $titulo, string $url, int $idarea): bool {
     global $mysqli;
     $stmt = $mysqli->prepare('INSERT INTO noticias (titulo, url, fecha, idarea) VALUES (?, ?, NOW(), ?)');
     $stmt->bind_param('ssi', $titulo, $url, $idarea);
+    $ok = $stmt->execute();
+    $stmt->close();
+    return $ok;
+}
+
+function update_news(int $id, string $titulo, string $url, int $idarea): bool {
+    global $mysqli;
+    $stmt = $mysqli->prepare('UPDATE noticias SET titulo = ?, url = ?, fecha = NOW(), idarea = ? WHERE id = ?');
+    $stmt->bind_param('ssii', $titulo, $url, $idarea, $id);
     $ok = $stmt->execute();
     $stmt->close();
     return $ok;
