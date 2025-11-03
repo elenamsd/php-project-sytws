@@ -26,10 +26,13 @@ if (empty($_SESSION['user'])) {
 }
 
 $search = trim($_GET['s'] ?? '');
+$areaId = (int)($_GET['area'] ?? 0);
 $pageInput = (int)($_GET['page'] ?? 1);
-$total = get_news_count($search);
+
+$areas = get_areas();
+$total = get_news_count($search, $areaId);
 $pagination = paginate($total, 25, $pageInput);
-$rows = get_news($pagination['perPage'], $pagination['offset'], $search);
+$rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId);
 ?>
 <!doctype html>
 <html lang="es">
@@ -50,17 +53,25 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search);
 		</div>
 	</div>
 </nav>
-
 <div class="container py-4">
 	<h1 class="h3 mb-4">Listado de noticias</h1>
-
 	<form class="row g-2 mb-3" method="get">
-		<div class="col-sm-8 col-md-6">
+		<div class="col-sm-5 col-md-4">
 			<input class="form-control" type="text" name="s" placeholder="Buscar por título..." value="<?= htmlspecialchars($search) ?>">
 		</div>
-		<div class="col-sm-auto">
+		<div class="col-sm-4 col-md-3">
+			<select name="area" class="form-select">
+				<option value="0">Todas las áreas</option>
+				<?php foreach ($areas as $a): ?>
+					<option value="<?= (int)$a['id'] ?>" <?= $areaId===(int)$a['id']?'selected':'' ?>>
+						<?= htmlspecialchars($a['area']) ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</div>
+		<div class="col-sm-auto d-flex gap-2">
 			<button class="btn btn-primary" type="submit">Buscar</button>
-			<?php if ($search): ?>
+			<?php if ($search || $areaId): ?>
 				<a class="btn btn-outline-secondary" href="news.php">Limpiar</a>
 			<?php endif; ?>
 		</div>
@@ -75,21 +86,23 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search);
 			<thead class="table-dark">
 			<tr>
 				<th>Título</th>
+				<th>Área</th>
 				<th>Fecha</th>
-				<th>Enlace</th>
+				<th>Acciones</th>
 			</tr>
 			</thead>
 			<tbody>
 			<?php foreach ($rows as $r): ?>
 				<tr>
-					<td class="text-truncate" style="max-width: 420px;">
-						<?= htmlspecialchars($r['titulo']) ?>
-					</td>
+					<td class="text-truncate" style="max-width: 320px;"><?= htmlspecialchars($r['titulo']) ?></td>
+					<td><?= htmlspecialchars($r['area'] ?? '') ?></td>
 					<td><?= htmlspecialchars($r['fecha']) ?></td>
 					<td>
-						<?php if (!empty($r['url'])): ?>
-							<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="<?= htmlspecialchars($r['url']) ?>">Abrir</a>
-						<?php endif; ?>
+						<div class="btn-group btn-group-sm">
+							<?php if (!empty($r['url'])): ?>
+								<a class="btn btn-outline-primary" target="_blank" rel="noopener" href="<?= htmlspecialchars($r['url']) ?>">Abrir</a>
+							<?php endif; ?>
+						</div>
 					</td>
 				</tr>
 			<?php endforeach; ?>
@@ -103,15 +116,15 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search);
 	<nav aria-label="Paginación">
 		<ul class="pagination pagination-sm">
 			<li class="page-item <?= $pagination['page'] <= 1 ? 'disabled' : '' ?>">
-				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$pagination['page']-1]) ?>">«</a>
+				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'area'=>$areaId,'page'=>$pagination['page']-1]) ?>">«</a>
 			</li>
-			<?php for ($i = $pagination['window_start']; $i <= $pagination['window_end']; $i++): ?>
+			<?php for ($i=$pagination['window_start']; $i <= $pagination['window_end']; $i++): ?>
 				<li class="page-item <?= $i === $pagination['page'] ? 'active' : '' ?>">
-					<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$i]) ?>"><?= $i ?></a>
+					<a class="page-link" href="?<?= http_build_query(['s'=>$search,'area'=>$areaId,'page'=>$i]) ?>"><?= $i ?></a>
 				</li>
 			<?php endfor; ?>
 			<li class="page-item <?= $pagination['page'] >= $pagination['pages'] ? 'disabled' : '' ?>">
-				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'page'=>$pagination['page']+1]) ?>">»</a>
+				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'area'=>$areaId,'page'=>$pagination['page']+1]) ?>">»</a>
 			</li>
 		</ul>
 	</nav>

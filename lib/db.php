@@ -15,14 +15,39 @@ function get_user_by(string $email): ?array {
     return $user;
 }
 
-function get_news_count(string $search = ''): int {
+function get_areas(): array {
     global $mysqli;
+    $res = $mysqli->query('SELECT id, area FROM areas ORDER BY area');
+    return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+function get_news_count(string $search = '', int $areaId = 0): int {
+    global $mysqli;
+    $where = [];
+    $params = '';
+    $types = '';
     if ($search !== '') {
-        $stmt = $mysqli->prepare('SELECT COUNT(*) FROM noticias WHERE titulo LIKE ?');
-        $like = '%' . $search . '%';
-        $stmt->bind_param('s', $like);
-    } else {
-        $stmt = $mysqli->prepare('SELECT COUNT(*) FROM noticias');
+        $where[] = 'n.titulo LIKE ?';
+        $params .= '%' . $search . '%';
+        $types .= 's';
+    }
+    if ($areaId > 0) {
+        $where[] = 'n.idarea = ?';
+        $params .= chr(0); 
+        $types .= 'i';
+    }
+    $sql = 'SELECT COUNT(*) FROM noticias n';
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $stmt = $mysqli->prepare($sql);
+    if ($where) {
+        $bindValues = [];
+        $pieces = explode(chr(0), $params);
+        $i = 0;
+        if ($search !== '') { $bindValues[] = $pieces[$i++]; }
+        if ($areaId > 0) { $bindValues[] = $areaId; }
+        $stmt->bind_param($types, ...$bindValues);
     }
     $stmt->execute();
     $stmt->bind_result($total);
@@ -31,19 +56,39 @@ function get_news_count(string $search = ''): int {
     return (int)$total;
 }
 
-function get_news(int $limit, int $offset, string $search = ''): array {
+function get_news(int $limit, int $offset, string $search = '', int $areaId = 0): array {
     global $mysqli;
+    $where = [];
+    $types = '';
+    $bind = [];
     if ($search !== '') {
-        $stmt = $mysqli->prepare('SELECT id, titulo, url, fecha FROM noticias WHERE titulo LIKE ? ORDER BY fecha DESC LIMIT ? OFFSET ?');
-        $like = '%' . $search . '%';
-        $stmt->bind_param('sii', $like, $limit, $offset);
-    } else {
-        $stmt = $mysqli->prepare('SELECT id, titulo, url, fecha FROM noticias ORDER BY fecha DESC LIMIT ? OFFSET ?');
-        $stmt->bind_param('ii', $limit, $offset);
+        $where[] = 'n.titulo LIKE ?';
+        $types .= 's';
+        $bind[] = '%' . $search . '%';
     }
+    if ($areaId > 0) {
+        $where[] = 'n.idarea = ?';
+        $types .= 'i';
+        $bind[] = $areaId;
+    }
+    $sql = 'SELECT n.id, n.titulo, n.url, n.fecha, n.idarea, a.area 
+            FROM noticias n 
+            LEFT JOIN areas a ON a.id = n.idarea';
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $sql .= ' ORDER BY n.fecha DESC LIMIT ? OFFSET ?';
+    $types .= 'ii';
+    $bind[] = $limit;
+    $bind[] = $offset;
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param($types, ...$bind);
     $stmt->execute();
     $res = $stmt->get_result();
     $rows = $res->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
     return $rows;
 }
+
+
+
