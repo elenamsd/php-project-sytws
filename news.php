@@ -28,6 +28,7 @@ if (empty($_SESSION['user'])) {
 $search = trim($_GET['s'] ?? '');
 $areaId = (int)($_GET['area'] ?? 0);
 $pageInput = (int)($_GET['page'] ?? 1);
+$created = (int)($_GET['created'] ?? 0);
 
 $areas = get_areas();
 $total = get_news_count($search, $areaId);
@@ -41,6 +42,7 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 	<title>Noticias</title>
 	<meta name="viewport" content="width=device-width,initial-scale=1">
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="index.css">
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -74,8 +76,17 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 			<?php if ($search || $areaId): ?>
 				<a class="btn btn-outline-secondary" href="news.php">Limpiar</a>
 			<?php endif; ?>
+			<a class="btn btn-success" href="news_new.php">Nueva noticia</a>
 		</div>
 	</form>
+
+	<?php if ($created): ?>
+		<div class="alert alert-success alert-dismissible fade show py-2 mb-3">
+			Noticia creada correctamente.
+			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+		</div>
+	<?php endif; ?>
+
 
 	<p class="text-muted small mb-2">
 		Total: <?= (int)$pagination['total'] ?> | Página <?= (int)$pagination['page'] ?> de <?= (int)$pagination['pages'] ?>
@@ -129,5 +140,6 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 		</ul>
 	</nav>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

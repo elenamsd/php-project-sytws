@@ -90,5 +90,14 @@ function get_news(int $limit, int $offset, string $search = '', int $areaId = 0)
     return $rows;
 }
 
+function create_news(string $titulo, string $url, int $idarea): bool {
+    global $mysqli;
+    $stmt = $mysqli->prepare('INSERT INTO noticias (titulo, url, fecha, idarea) VALUES (?, ?, NOW(), ?)');
+    $stmt->bind_param('ssi', $titulo, $url, $idarea);
+    $ok = $stmt->execute();
+    $stmt->close();
+    return $ok;
+}
+
 
 

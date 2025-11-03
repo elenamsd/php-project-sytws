@@ -1,0 +1,9 @@
+.alert.alert-dismissible { position: relative; }
+.alert.alert-dismissible .btn-close {
+	position: absolute;
+	top: 50%;
+	right: .75rem;
+	transform: translateY(-50%);
+	padding: 0;
+	margin: 0;
+}
