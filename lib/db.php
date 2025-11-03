@@ -103,7 +103,6 @@ function get_news_by_id(int $id): ?array {
     return $row;
 }
 
-
 function create_news(string $titulo, string $url, int $idarea): bool {
     global $mysqli;
     $stmt = $mysqli->prepare('INSERT INTO noticias (titulo, url, fecha, idarea) VALUES (?, ?, NOW(), ?)');
@@ -122,5 +121,11 @@ function update_news(int $id, string $titulo, string $url, int $idarea): bool {
     return $ok;
 }
 
-
-
+function delete_news(int $id): bool {
+    global $mysqli;
+    $stmt = $mysqli->prepare('DELETE FROM noticias WHERE id = ?');
+    $stmt->bind_param('i', $id);
+    $ok = $stmt->execute();
+    $stmt->close();
+    return $ok;
+}
