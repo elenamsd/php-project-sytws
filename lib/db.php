@@ -21,32 +21,33 @@ function get_areas(): array {
     return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function get_news_count(string $search = '', int $areaId = 0): int {
-    global $mysqli;
-    $where = [];
-    $params = '';
+function build_news_filters(string $search = '', int $areaId = 0): array {
+    $sql = '';
     $types = '';
+    $bindValues = [];
+
     if ($search !== '') {
-        $where[] = 'n.titulo LIKE ?';
-        $params .= '%' . $search . '%';
+        $sql .= ' AND n.titulo LIKE ?';
         $types .= 's';
+        $bindValues[] = '%' . $search . '%';
     }
     if ($areaId > 0) {
-        $where[] = 'n.idarea = ?';
-        $params .= chr(0); 
+        $sql .= ' AND n.idarea = ?';
         $types .= 'i';
+        $bindValues[] = $areaId;
     }
-    $sql = 'SELECT COUNT(*) FROM noticias n';
-    if ($where) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
-    }
+    return [$sql, $types, $bindValues];
+}
+
+function get_news_count(string $search = '', int $areaId = 0): int {
+    global $mysqli;
+
+    $sql = 'SELECT COUNT(*) FROM noticias n WHERE 1';
+    list($filterSql, $types, $bindValues) = build_news_filters($search, $areaId);
+    $sql .= $filterSql;
+
     $stmt = $mysqli->prepare($sql);
-    if ($where) {
-        $bindValues = [];
-        $pieces = explode(chr(0), $params);
-        $i = 0;
-        if ($search !== '') { $bindValues[] = $pieces[$i++]; }
-        if ($areaId > 0) { $bindValues[] = $areaId; }
+    if ($bindValues) {
         $stmt->bind_param($types, ...$bindValues);
     }
     $stmt->execute();
@@ -58,31 +59,20 @@ function get_news_count(string $search = '', int $areaId = 0): int {
 
 function get_news(int $limit, int $offset, string $search = '', int $areaId = 0): array {
     global $mysqli;
-    $where = [];
-    $types = '';
-    $bind = [];
-    if ($search !== '') {
-        $where[] = 'n.titulo LIKE ?';
-        $types .= 's';
-        $bind[] = '%' . $search . '%';
-    }
-    if ($areaId > 0) {
-        $where[] = 'n.idarea = ?';
-        $types .= 'i';
-        $bind[] = $areaId;
-    }
+
     $sql = 'SELECT n.id, n.titulo, n.url, n.fecha, n.idarea, a.area 
             FROM noticias n 
-            LEFT JOIN areas a ON a.id = n.idarea';
-    if ($where) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
-    }
+            LEFT JOIN areas a ON a.id = n.idarea 
+            WHERE 1';
+    list($filterSql, $types, $bindValues) = build_news_filters($search, $areaId);
+    $sql .= $filterSql;
     $sql .= ' ORDER BY n.fecha DESC LIMIT ? OFFSET ?';
     $types .= 'ii';
-    $bind[] = $limit;
-    $bind[] = $offset;
+    $bindValues[] = $limit;
+    $bindValues[] = $offset;
+
     $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param($types, ...$bind);
+    $stmt->bind_param($types, ...$bindValues);
     $stmt->execute();
     $res = $stmt->get_result();
     $rows = $res->fetch_all(MYSQLI_ASSOC);
