@@ -20,6 +20,16 @@ function paginate(int $total, int $perPage, int $page, int $window = 2): array {
 	];
 }
 
+function pagination_form($search, $areaId, $page, $disabled = false, $label = '') {
+	$disabledAttr = $disabled ? 'disabled' : '';
+	return '<form method="post" style="display:inline;">
+		<input type="hidden" name="s" value="'.htmlspecialchars($search).'">
+		<input type="hidden" name="area" value="'.(int)$areaId.'">
+		<input type="hidden" name="page" value="'.(int)$page.'">
+		<button class="page-link" type="submit" '.$disabledAttr.'>'.$label.'</button>
+	</form>';
+}
+
 if (empty($_SESSION['user'])) {
 	header('Location: index.php');
 	exit;
@@ -141,18 +151,6 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 
 	<nav aria-label="Paginación">
 		<ul class="pagination pagination-sm">
-			<?php
-			// Helper para crear formularios de paginación con POST
-			function pagination_form($search, $areaId, $page, $disabled = false, $label = '') {
-				$disabledAttr = $disabled ? 'disabled' : '';
-				return '<form method="post" style="display:inline;">
-					<input type="hidden" name="s" value="'.htmlspecialchars($search).'">
-					<input type="hidden" name="area" value="'.(int)$areaId.'">
-					<input type="hidden" name="page" value="'.(int)$page.'">
-					<button class="page-link" type="submit" '.$disabledAttr.'>'.$label.'</button>
-				</form>';
-			}
-			?>
 			<li class="page-item <?= $pagination['page'] <= 1 ? 'disabled' : '' ?>">
 				<?= pagination_form($search, $areaId, $pagination['page']-1, $pagination['page'] <= 1, '«') ?>
 			</li>
