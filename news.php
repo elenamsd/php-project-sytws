@@ -25,9 +25,9 @@ if (empty($_SESSION['user'])) {
 	exit;
 }
 
-$search = trim($_GET['s'] ?? '');
-$areaId = (int)($_GET['area'] ?? 0);
-$pageInput = (int)($_GET['page'] ?? 1);
+$search = trim($_POST['s'] ?? '');
+$areaId = (int)($_POST['area'] ?? 0);
+$pageInput = (int)($_POST['page'] ?? 1);
 $updated = (int)($_GET['updated'] ?? 0);
 $deleted = (int)($_GET['deleted'] ?? 0);
 $created = (int)($_GET['created'] ?? 0);
@@ -59,7 +59,7 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 </nav>
 <div class="container py-4">
 	<h1 class="h3 mb-4">Listado de noticias</h1>
-	<form class="row g-2 mb-3" method="get">
+	<form class="row g-2 mb-3" method="post">
 		<div class="col-sm-5 col-md-4">
 			<input class="form-control" type="text" name="s" placeholder="Buscar por título..." value="<?= htmlspecialchars($search) ?>">
 		</div>
@@ -141,16 +141,28 @@ $rows = get_news($pagination['perPage'], $pagination['offset'], $search, $areaId
 
 	<nav aria-label="Paginación">
 		<ul class="pagination pagination-sm">
+			<?php
+			// Helper para crear formularios de paginación con POST
+			function pagination_form($search, $areaId, $page, $disabled = false, $label = '') {
+				$disabledAttr = $disabled ? 'disabled' : '';
+				return '<form method="post" style="display:inline;">
+					<input type="hidden" name="s" value="'.htmlspecialchars($search).'">
+					<input type="hidden" name="area" value="'.(int)$areaId.'">
+					<input type="hidden" name="page" value="'.(int)$page.'">
+					<button class="page-link" type="submit" '.$disabledAttr.'>'.$label.'</button>
+				</form>';
+			}
+			?>
 			<li class="page-item <?= $pagination['page'] <= 1 ? 'disabled' : '' ?>">
-				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'area'=>$areaId,'page'=>$pagination['page']-1]) ?>">«</a>
+				<?= pagination_form($search, $areaId, $pagination['page']-1, $pagination['page'] <= 1, '«') ?>
 			</li>
 			<?php for ($i=$pagination['window_start']; $i <= $pagination['window_end']; $i++): ?>
 				<li class="page-item <?= $i === $pagination['page'] ? 'active' : '' ?>">
-					<a class="page-link" href="?<?= http_build_query(['s'=>$search,'area'=>$areaId,'page'=>$i]) ?>"><?= $i ?></a>
+					<?= pagination_form($search, $areaId, $i, false, $i) ?>
 				</li>
 			<?php endfor; ?>
 			<li class="page-item <?= $pagination['page'] >= $pagination['pages'] ? 'disabled' : '' ?>">
-				<a class="page-link" href="?<?= http_build_query(['s'=>$search,'area'=>$areaId,'page'=>$pagination['page']+1]) ?>">»</a>
+				<?= pagination_form($search, $areaId, $pagination['page']+1, $pagination['page'] >= $pagination['pages'], '»') ?>
 			</li>
 		</ul>
 	</nav>
